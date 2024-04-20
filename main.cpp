@@ -27,7 +27,7 @@ bool pr_754_approach(std::unordered_map<std::string, std::vector<Mesh *> *> &bfx
                 bfxm_hash_table.erase(hash_name);
                 delete hashers;
                 hashers = nullptr;
-                std::cout << "hashers was deleted";
+                std::cout << "hashers was deleted" << std::endl;
                 return true;
             }
         } catch (std::exception & ex) {
@@ -75,6 +75,7 @@ bool BenjamenMeyersApproach(std::unordered_map<std::string, std::vector<Mesh *> 
                         bfxm_hash_table.erase(hash_name);
                         delete hashers;
                         hashers = nullptr;
+                        std::cout << "hashers was deleted" << std::endl;
                         break;
                     }
 
@@ -128,7 +129,7 @@ bool test_harness(long long input, const uint32_t output_size, bool (*which_appr
         }
         key_buffer[key_len] = '\0';
         std::string new_key_value{const_cast<const char *>(key_buffer)};
-        std::cout << key_buffer << '\n';
+        std::cout << key_buffer << std::endl;
         keys_to_insert.push_back(new_key_value);
     }
 
@@ -177,11 +178,11 @@ bool test_harness(long long input, const uint32_t output_size, bool (*which_appr
         {
             continue;
         }
-        uint32_t mesh_index = random_value_generator() % vector_size;
+        size_t mesh_index = random_value_generator() % vector_size;
         Mesh *mesh_for_this_iteration = vector_to_pull_mesh_from->at(mesh_index);
-        bool test_successful = BenjamenMeyersApproach(bfxm_hash_table, key_for_this_iteration, mesh_for_this_iteration);
+        bool test_successful = which_approach_to_test(bfxm_hash_table, key_for_this_iteration, mesh_for_this_iteration);
         if (!test_successful) {
-            std::cerr << "Unsuccessful test of Benjamen Meyer's code" << std::endl;
+            // std::cerr << "Unsuccessful test" << std::endl;
             return false;
         }
     }
