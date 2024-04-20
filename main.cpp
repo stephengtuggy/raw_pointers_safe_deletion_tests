@@ -2,6 +2,7 @@
 #include <vector>
 #include <unordered_map>
 #include <random>
+#include <regex>
 
 class Mesh {
     int data{};
@@ -9,7 +10,7 @@ class Mesh {
 
 constexpr uint32_t MAX_KEY_LENGTH = 80;
 constexpr uint32_t MAX_ENTRIES_PER = 100;
-constexpr uint32_t MAX_TEST_ITERATIONS = 34;
+constexpr uint32_t MAX_TEST_ITERATIONS = 89;
 constexpr uint32_t INITIAL_SEED = 89;
 
 bool testBenjamenMeyersCode(std::unordered_map<std::string, std::vector<Mesh *> *> &bfxm_hash_table, const std::string& hash_name, const Mesh * thus) {
@@ -37,7 +38,14 @@ bool testBenjamenMeyersCode(std::unordered_map<std::string, std::vector<Mesh *> 
                         resetIter = true;
                         cachedHashItem = hashItem + 1;
                     }
-                    hashers->erase(hashItem);
+                    // Note: The following block of code is specific to these tests. It should not be copied
+                    // to Vega Strike's corresponding section of code.
+                    {
+                        auto tmp = *hashItem;
+                        hashers->erase(hashItem);
+                        delete tmp;
+                        tmp = nullptr;
+                    }
                     if (hashers->empty()) {
                         bfxm_hash_table.erase(hash_name);
                         delete hashers;
@@ -65,8 +73,22 @@ bool testBenjamenMeyersCode(std::unordered_map<std::string, std::vector<Mesh *> 
     return false;
 }
 
-int main() {
-    time_t input{time(NULL)};
+bool is_integer(const std::string & s){
+    const std::regex re("[-+]?[0-9]+");
+    return std::regex_match(s, re);
+}
+
+int main(int argc, char* argv[]) {
+    long long input{time(NULL)};
+    // long long input{1713611173};
+    if (argc > 1)
+    {
+        char* s = argv[argc - 1];
+        if (is_integer(s))
+        {
+            input = std::stoll(s);
+        }
+    }
     constexpr uint32_t output_size{1};
 
     std::unordered_map<std::string, std::vector<Mesh *> *> starting_bfxm_hash_table;
@@ -108,6 +130,10 @@ int main() {
         vector_pointers_to_add_to_bfxm.push_back(child_vector);
     }
 
+    if (how_many_bfxm_hash_table_keys == 0)
+    {
+        return 0;
+    }
     for (uint32_t l = 0; l < how_many_bfxm_hash_table_keys; ++l) {
         uint32_t index_of_vector_to_add = random_value_generator() % how_many_bfxm_value_vectors;
         starting_bfxm_hash_table[keys_to_insert[l]] = vector_pointers_to_add_to_bfxm[index_of_vector_to_add];
@@ -115,9 +141,21 @@ int main() {
 
     uint32_t number_of_iterations = random_value_generator() % MAX_TEST_ITERATIONS;
     for (uint32_t m = 0; m < number_of_iterations; ++m) {
+        // if (how_many_bfxm_hash_table_keys == 0)
+        // {
+        //     continue;
+        // }
         uint32_t key_index = random_value_generator() % how_many_bfxm_hash_table_keys;
         std::string key_for_this_iteration = keys_to_insert.at(key_index);
+        if (!starting_bfxm_hash_table.at(key_for_this_iteration))
+        {
+            continue;
+        }
         std::vector<Mesh *> *vector_to_pull_mesh_from = starting_bfxm_hash_table[key_for_this_iteration];
+        if (!vector_to_pull_mesh_from)
+        {
+            continue;
+        }
         size_t vector_size = vector_to_pull_mesh_from->size();
         if (vector_size == 0)
         {
