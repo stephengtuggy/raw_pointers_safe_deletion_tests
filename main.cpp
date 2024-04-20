@@ -3,15 +3,18 @@
 #include <unordered_map>
 #include <random>
 #include <regex>
+#include <algorithm>
 
 class Mesh {
     int data{};
 };
 
-constexpr uint32_t MAX_KEY_LENGTH = 80;
+constexpr uint32_t MAX_KEY_LENGTH = 62;
 constexpr uint32_t MAX_ENTRIES_PER = 100;
 constexpr uint32_t MAX_TEST_ITERATIONS = 89;
 constexpr uint32_t INITIAL_SEED = 89;
+
+std::string char_values_from{"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"};
 
 bool pr_754_approach(std::unordered_map<std::string, std::vector<Mesh *> *> &bfxm_hash_table, const std::string& hash_name, const Mesh * thus)
 {
@@ -19,7 +22,7 @@ bool pr_754_approach(std::unordered_map<std::string, std::vector<Mesh *> *> &bfx
     if (hashers) {
         try
         {
-            auto first_to_remove = std::stable_partition(hashers->begin(), hashers->end(), [thus](Mesh * pi) { return pi != thus; });
+            auto first_to_remove = std::stable_partition(hashers->begin(), hashers->end(), [thus](const Mesh * pi) { return pi != thus; });
             // TODO: Add deletion of what the pointers actually point to!
             hashers->erase(first_to_remove, hashers->end());
             if (hashers->empty())
@@ -108,7 +111,7 @@ bool test_harness(long long input, const uint32_t output_size, bool (*which_appr
                       std::unordered_map<std::string, std::vector<Mesh*>*>& bfxm_hash_table,
                       const std::string& hash_name, const Mesh* thus))
 {
-    std::unordered_map<std::string, std::vector<Mesh *> *> bfxm_hash_table;
+    auto *bfxm_hash_table = new std::unordered_map<std::string, std::vector<Mesh *> *>();
 
     std::seed_seq seq{input};
     std::vector<std::uint32_t> seeds(output_size);
@@ -118,26 +121,35 @@ bool test_harness(long long input, const uint32_t output_size, bool (*which_appr
     }
 
     std::mt19937 random_value_generator(seeds[0]);
-    uint32_t how_many_bfxm_hash_table_keys = random_value_generator() % MAX_ENTRIES_PER;
+    std::uniform_int_distribution<uint32_t> uni_max_entries(0, MAX_ENTRIES_PER);
+    uint32_t how_many_bfxm_hash_table_keys = uni_max_entries(random_value_generator);
     std::vector<std::string> keys_to_insert;
     keys_to_insert.reserve(how_many_bfxm_hash_table_keys);
+    std::uniform_int_distribution<uint32_t> uni_key_length(1, MAX_KEY_LENGTH);
     for (uint32_t i = 0; i < how_many_bfxm_hash_table_keys; ++i) {
-        uint32_t key_len = random_value_generator() % MAX_KEY_LENGTH;
-        char key_buffer[MAX_KEY_LENGTH + 1]{};
-        for (uint32_t j1 = 0; j1 < key_len; ++j1) {
-            key_buffer[j1] = random_value_generator() % ('z' - ' ') + ' ';
+        uint32_t key_len = uni_key_length(random_value_generator);
+        std::vector<char> key_buffer;
+        for (uint32_t char_number = 0; char_number < key_len; ++char_number)
+        {
+            key_buffer.push_back(char_values_from.at(char_number));
         }
-        key_buffer[key_len] = '\0';
-        std::string new_key_value{const_cast<const char *>(key_buffer)};
-        std::cout << key_buffer << std::endl;
-        keys_to_insert.push_back(new_key_value);
+        std::shuffle(key_buffer.begin(), key_buffer.end(), random_value_generator);
+        char key_chars[MAX_KEY_LENGTH + 1]{};
+        for (uint32_t char_number = 0; char_number < key_len; ++char_number)
+        {
+            key_chars[char_number] = key_buffer.at(char_number);
+        }
+        key_chars[key_len] = '\0';
+        std::string generated_key{key_chars};
+        std::cout << generated_key << std::endl;
+        keys_to_insert.push_back(generated_key);
     }
 
-    uint32_t how_many_bfxm_value_vectors = random_value_generator() % MAX_ENTRIES_PER;
+    uint32_t how_many_bfxm_value_vectors = uni_max_entries(random_value_generator);
     std::vector<std::vector<Mesh *> *> vector_pointers_to_add_to_bfxm;
     vector_pointers_to_add_to_bfxm.reserve(how_many_bfxm_value_vectors);
     for (uint32_t j = 0; j < how_many_bfxm_value_vectors; ++j) {
-        uint32_t how_many_Meshes = random_value_generator() % MAX_ENTRIES_PER;
+        uint32_t how_many_Meshes = uni_max_entries(random_value_generator);
         auto * child_vector = new std::vector<Mesh *>();
         child_vector->reserve(how_many_Meshes);
         for (uint32_t k = 0; k < how_many_Meshes; ++k) {
@@ -152,35 +164,46 @@ bool test_harness(long long input, const uint32_t output_size, bool (*which_appr
         return true;
     }
     for (uint32_t l = 0; l < how_many_bfxm_hash_table_keys; ++l) {
-        uint32_t index_of_vector_to_add = random_value_generator() % how_many_bfxm_value_vectors;
-        bfxm_hash_table[keys_to_insert[l]] = vector_pointers_to_add_to_bfxm[index_of_vector_to_add];
+        std::uniform_int_distribution<uint32_t> uni_key(0, how_many_bfxm_hash_table_keys - 1);
+        uint32_t index_of_key_to_add = uni_key(random_value_generator);
+        std::uniform_int_distribution<uint32_t> uni_value(0, how_many_bfxm_value_vectors - 1);
+        uint32_t index_of_vector_to_add = uni_value(random_value_generator);
+        bfxm_hash_table->insert_or_assign(keys_to_insert.at(index_of_key_to_add), vector_pointers_to_add_to_bfxm.at(index_of_vector_to_add));
     }
 
-    uint32_t number_of_iterations = random_value_generator() % MAX_TEST_ITERATIONS;
+    std::uniform_int_distribution<uint32_t> uniA(0, MAX_TEST_ITERATIONS);
+    uint32_t number_of_iterations = uniA(random_value_generator);
+    std::uniform_int_distribution<uint32_t> uni_which_key(0, how_many_bfxm_hash_table_keys - 1);
     for (uint32_t m = 0; m < number_of_iterations; ++m) {
+        // if (!bfxm_hash_table)
+        // {
+        //     break;
+        // }
         // if (how_many_bfxm_hash_table_keys == 0)
         // {
         //     continue;
         // }
-        uint32_t key_index = random_value_generator() % how_many_bfxm_hash_table_keys;
+        uint32_t key_index = uni_which_key(random_value_generator);
         std::string key_for_this_iteration = keys_to_insert.at(key_index);
-        if (!bfxm_hash_table.at(key_for_this_iteration))
+        auto vector_to_pull_mesh_from = bfxm_hash_table->find(key_for_this_iteration);
+        if (vector_to_pull_mesh_from == bfxm_hash_table->end())
         {
             continue;
         }
-        std::vector<Mesh *> *vector_to_pull_mesh_from = bfxm_hash_table[key_for_this_iteration];
-        if (!vector_to_pull_mesh_from)
+        auto *this_vector = vector_to_pull_mesh_from->second;
+        if (this_vector == nullptr)
         {
             continue;
         }
-        size_t vector_size = vector_to_pull_mesh_from->size();
+        size_t vector_size = this_vector->size();
         if (vector_size == 0)
         {
             continue;
         }
-        size_t mesh_index = random_value_generator() % vector_size;
-        Mesh *mesh_for_this_iteration = vector_to_pull_mesh_from->at(mesh_index);
-        bool test_successful = which_approach_to_test(bfxm_hash_table, key_for_this_iteration, mesh_for_this_iteration);
+        std::uniform_int_distribution<size_t> uni(0,vector_size - 1);
+        size_t mesh_index = uni(random_value_generator);
+        Mesh *mesh_for_this_iteration = this_vector->at(mesh_index);
+        bool test_successful = which_approach_to_test(*bfxm_hash_table, key_for_this_iteration, mesh_for_this_iteration);
         if (!test_successful) {
             // std::cerr << "Unsuccessful test" << std::endl;
             return false;
