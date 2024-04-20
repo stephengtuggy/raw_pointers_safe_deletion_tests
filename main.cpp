@@ -2,21 +2,15 @@
 #include <vector>
 #include <unordered_map>
 #include <random>
-#include <algorithm>
-#include <list>
 
 class Mesh {
-    __attribute__((unused)) int data{};
+    int data{};
 };
 
 const uint32_t MAX_KEY_LENGTH = 80;
 const uint32_t MAX_ENTRIES_PER = 100;
 const uint32_t MAX_TEST_ITERATIONS = 21;
 const uint32_t INITIAL_SEED = 89;
-
-//typedef std::basic_string<unsigned char> std::string;
-
-//static std::string charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
 
 bool testBenjamenMeyersCode(std::unordered_map<std::string, std::vector<Mesh *> *> &bfxm_hash_table, std::string& hash_name, Mesh * thus) {
     std::vector<Mesh *> *hashers = bfxm_hash_table.at(hash_name);
