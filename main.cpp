@@ -22,6 +22,7 @@
 #include <random>
 #include <regex>
 #include <algorithm>
+#include <functional>
 
 class Mesh {
     int data{};
@@ -30,11 +31,33 @@ class Mesh {
 constexpr uint32_t MAX_KEY_LENGTH = 62;
 constexpr uint32_t MAX_ENTRIES_PER = 100;
 constexpr uint32_t MAX_TEST_ITERATIONS = 89;
-constexpr uint32_t INITIAL_SEED = 89;
+constexpr uint32_t INITIAL_SEED = 1713623895;
 
 std::string char_values_from{"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"};
 
-bool pr_754_approach(std::unordered_map<std::string, std::vector<Mesh *> *> &bfxm_hash_table, const std::string& hash_name, const Mesh * thus)
+template<typename T> void remove_all_references_to(const T *thus, std::vector<T *> *&vec, bool& collection_was_deleted) {
+    if (vec) {
+        if (!vec->empty()) {
+            auto first_to_remove = std::stable_partition(vec->begin(), vec->end(),
+                                                         [thus](const T *pi) { return pi != thus; });
+            vec->erase(first_to_remove, vec->end());
+        }
+        if (vec->empty()) {
+            delete vec;
+            vec = nullptr;
+            collection_was_deleted = true;
+        }
+    }
+}
+
+bool generalized_approach_A(std::unordered_map<std::string, std::vector<Mesh *> *> &bfxm_hash_table, const std::string& hash_name,
+                            const Mesh *thus, bool &collection_was_deleted) {
+    std::vector<Mesh *> *hashers = bfxm_hash_table.at(hash_name);
+    remove_all_references_to(thus, hashers, collection_was_deleted);
+    return true;
+}
+
+bool pr_754_approach(std::unordered_map<std::string, std::vector<Mesh *> *> &bfxm_hash_table, const std::string& hash_name, const Mesh * thus, bool &collection_was_deleted)
 {
     std::vector<Mesh *> *hashers = bfxm_hash_table.at(hash_name);
     if (hashers) {
@@ -42,7 +65,7 @@ bool pr_754_approach(std::unordered_map<std::string, std::vector<Mesh *> *> &bfx
         {
             if (!hashers->empty()) {
                 auto first_to_remove = std::stable_partition(hashers->begin(), hashers->end(),
-                                                             [thus](const Mesh *pi) { return pi != thus; });
+                            [thus](const Mesh *pi) { return pi != thus; });
                 for (auto to_remove = first_to_remove; to_remove != hashers->end(); ++to_remove) {
                     delete *to_remove;
                     *to_remove = nullptr;
@@ -55,6 +78,7 @@ bool pr_754_approach(std::unordered_map<std::string, std::vector<Mesh *> *> &bfx
                 delete hashers;
                 hashers = nullptr;
                 std::cout << "hashers was deleted" << std::endl;
+                collection_was_deleted = true;
                 return true;
             }
         } catch (std::exception & ex) {
@@ -65,7 +89,7 @@ bool pr_754_approach(std::unordered_map<std::string, std::vector<Mesh *> *> &bfx
     return true;
 }
 
-bool BenjamenMeyersApproach(std::unordered_map<std::string, std::vector<Mesh *> *> &bfxm_hash_table, const std::string& hash_name, const Mesh * thus) {
+bool BenjamenMeyersApproach(std::unordered_map<std::string, std::vector<Mesh *> *> &bfxm_hash_table, const std::string& hash_name, const Mesh * thus, bool &collection_was_deleted) {
     std::vector<Mesh *> *hashers = bfxm_hash_table.at(hash_name);
     std::vector<Mesh *>::iterator finder;
     if (hashers) {
@@ -75,6 +99,7 @@ bool BenjamenMeyersApproach(std::unordered_map<std::string, std::vector<Mesh *> 
             delete hashers;
             hashers = nullptr;
             std::cout << "hashers was deleted" << std::endl;
+            collection_was_deleted = true;
             return true;
         }
         try {
@@ -82,7 +107,7 @@ bool BenjamenMeyersApproach(std::unordered_map<std::string, std::vector<Mesh *> 
             // 1. `std::vector::erase()` can take an iterator and remove it from the vector; but invalidates
             //      the iterator in the process
             // 2. To overcome the invalid iterator issue, the next previous iterator is cached
-            // 3. In the case that the previous iterator would be invalid (e.g it's at the start) then it needs
+            // 3. In the case that the previous iterator would be invalid (e.g. it's at the start) then it needs
             //      to restart the loop without the loop conditions, therefore a simple GOTO is used instead to
             //      avoid the incrementing the iterator so that values are not skipped
             // A reverse iterator could kind of help this; however, `std::vector::erase` unfortunately
@@ -111,6 +136,7 @@ bool BenjamenMeyersApproach(std::unordered_map<std::string, std::vector<Mesh *> 
                         delete hashers;
                         hashers = nullptr;
                         std::cout << "hashers was deleted" << std::endl;
+                        collection_was_deleted = true;
                         return true;
                     }
 
@@ -141,7 +167,7 @@ bool is_integer(const std::string & s){
 
 bool test_harness(long long input, const uint32_t output_size, bool (*which_approach_to_test)(
                       std::unordered_map<std::string, std::vector<Mesh*>*>& bfxm_hash_table,
-                      const std::string& hash_name, const Mesh* thus))
+                      const std::string& hash_name, const Mesh* thus, bool &container_was_deleted))
 {
     auto *bfxm_hash_table = new std::unordered_map<std::string, std::vector<Mesh *> *>();
 
@@ -207,14 +233,6 @@ bool test_harness(long long input, const uint32_t output_size, bool (*which_appr
     uint32_t number_of_iterations = uniA(random_value_generator);
     std::uniform_int_distribution<uint32_t> uni_which_key(0, how_many_bfxm_hash_table_keys - 1);
     for (uint32_t m = 0; m < number_of_iterations; ++m) {
-        // if (!bfxm_hash_table)
-        // {
-        //     break;
-        // }
-        // if (how_many_bfxm_hash_table_keys == 0)
-        // {
-        //     continue;
-        // }
         uint32_t key_index = uni_which_key(random_value_generator);
         std::string key_for_this_iteration = keys_to_insert.at(key_index);
         auto vector_to_pull_mesh_from = bfxm_hash_table->find(key_for_this_iteration);
@@ -235,12 +253,12 @@ bool test_harness(long long input, const uint32_t output_size, bool (*which_appr
         std::uniform_int_distribution<size_t> uni(0,vector_size - 1);
         size_t mesh_index = uni(random_value_generator);
         Mesh *mesh_for_this_iteration = this_vector->at(mesh_index);
-        bool test_successful = which_approach_to_test(*bfxm_hash_table, key_for_this_iteration, mesh_for_this_iteration);
+        bool collection_was_deleted = false;
+        bool test_successful = which_approach_to_test(*bfxm_hash_table, key_for_this_iteration, mesh_for_this_iteration, collection_was_deleted);
         if (!test_successful) {
-            // std::cerr << "Unsuccessful test" << std::endl;
             return false;
         }
-        if (bfxm_hash_table->find(key_for_this_iteration) == bfxm_hash_table->cend()) {
+        if (collection_was_deleted) {
             return true;
         }
     }
@@ -249,7 +267,6 @@ bool test_harness(long long input, const uint32_t output_size, bool (*which_appr
 
 int main(int argc, char* argv[]) {
     long long input{time(NULL)};
-    // long long input{1713611173};
     if (argc > 1)
     {
         char* s = argv[argc - 1];
@@ -261,7 +278,7 @@ int main(int argc, char* argv[]) {
     constexpr uint32_t output_size{1};
 
     bool (*whichApproachToTest)(std::unordered_map<std::string, std::vector<Mesh*>*>& bfxm_hash_table,
-                                const std::string& hash_name, const Mesh* thus) = BenjamenMeyersApproach;
+                                const std::string& hash_name, const Mesh* thus, bool &collection_was_deleted) = BenjamenMeyersApproach;
     if (!test_harness(input, output_size, whichApproachToTest))
     {
         std::cerr << "Test of Benjamen Meyer's approach failed!" << std::endl;
@@ -272,6 +289,12 @@ int main(int argc, char* argv[]) {
     if (!test_harness(input, output_size, whichApproachToTest))
     {
         std::cerr << "Test of the PR 754 approach failed!" << std::endl;
+        return 1;
+    }
+
+    whichApproachToTest = generalized_approach_A;
+    if (!test_harness(input, output_size, whichApproachToTest)) {
+        std::cerr << "Test of Generalized Approach A failed!" << std::endl;
         return 1;
     }
 
