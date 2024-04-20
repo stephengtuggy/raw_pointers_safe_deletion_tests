@@ -13,7 +13,32 @@ constexpr uint32_t MAX_ENTRIES_PER = 100;
 constexpr uint32_t MAX_TEST_ITERATIONS = 89;
 constexpr uint32_t INITIAL_SEED = 89;
 
-bool testBenjamenMeyersCode(std::unordered_map<std::string, std::vector<Mesh *> *> &bfxm_hash_table, const std::string& hash_name, const Mesh * thus) {
+bool pr_754_approach(std::unordered_map<std::string, std::vector<Mesh *> *> &bfxm_hash_table, const std::string& hash_name, const Mesh * thus)
+{
+    std::vector<Mesh *> *hashers = bfxm_hash_table.at(hash_name);
+    if (hashers) {
+        try
+        {
+            auto first_to_remove = std::stable_partition(hashers->begin(), hashers->end(), [thus](Mesh * pi) { return pi != thus; });
+            // TODO: Add deletion of what the pointers actually point to!
+            hashers->erase(first_to_remove, hashers->end());
+            if (hashers->empty())
+            {
+                bfxm_hash_table.erase(hash_name);
+                delete hashers;
+                hashers = nullptr;
+                std::cout << "hashers was deleted";
+                return true;
+            }
+        } catch (std::exception & ex) {
+            std::cerr << "Exception occurred in test of PR 754 WIP code: " << ex.what() << std::endl;
+            return false;
+        }
+    }
+    return true;
+}
+
+bool BenjamenMeyersApproach(std::unordered_map<std::string, std::vector<Mesh *> *> &bfxm_hash_table, const std::string& hash_name, const Mesh * thus) {
     std::vector<Mesh *> *hashers = bfxm_hash_table.at(hash_name);
     std::vector<Mesh *>::iterator finder;
     if (hashers) {
@@ -38,8 +63,8 @@ bool testBenjamenMeyersCode(std::unordered_map<std::string, std::vector<Mesh *> 
                         resetIter = true;
                         cachedHashItem = hashItem + 1;
                     }
-                    // Note: The following block of code is specific to these tests. It should not be copied
-                    // to Vega Strike's corresponding section of code.
+                    // Note: Is the following block of code specific to these tests? Or should it be copied
+                    // to Vega Strike's corresponding section of code?
                     {
                         auto tmp = *hashItem;
                         hashers->erase(hashItem);
@@ -78,20 +103,11 @@ bool is_integer(const std::string & s){
     return std::regex_match(s, re);
 }
 
-int main(int argc, char* argv[]) {
-    long long input{time(NULL)};
-    // long long input{1713611173};
-    if (argc > 1)
-    {
-        char* s = argv[argc - 1];
-        if (is_integer(s))
-        {
-            input = std::stoll(s);
-        }
-    }
-    constexpr uint32_t output_size{1};
-
-    std::unordered_map<std::string, std::vector<Mesh *> *> starting_bfxm_hash_table;
+bool test_harness(long long input, const uint32_t output_size, bool (*which_approach_to_test)(
+                      std::unordered_map<std::string, std::vector<Mesh*>*>& bfxm_hash_table,
+                      const std::string& hash_name, const Mesh* thus))
+{
+    std::unordered_map<std::string, std::vector<Mesh *> *> bfxm_hash_table;
 
     std::seed_seq seq{input};
     std::vector<std::uint32_t> seeds(output_size);
@@ -132,11 +148,11 @@ int main(int argc, char* argv[]) {
 
     if (how_many_bfxm_hash_table_keys == 0)
     {
-        return 0;
+        return true;
     }
     for (uint32_t l = 0; l < how_many_bfxm_hash_table_keys; ++l) {
         uint32_t index_of_vector_to_add = random_value_generator() % how_many_bfxm_value_vectors;
-        starting_bfxm_hash_table[keys_to_insert[l]] = vector_pointers_to_add_to_bfxm[index_of_vector_to_add];
+        bfxm_hash_table[keys_to_insert[l]] = vector_pointers_to_add_to_bfxm[index_of_vector_to_add];
     }
 
     uint32_t number_of_iterations = random_value_generator() % MAX_TEST_ITERATIONS;
@@ -147,11 +163,11 @@ int main(int argc, char* argv[]) {
         // }
         uint32_t key_index = random_value_generator() % how_many_bfxm_hash_table_keys;
         std::string key_for_this_iteration = keys_to_insert.at(key_index);
-        if (!starting_bfxm_hash_table.at(key_for_this_iteration))
+        if (!bfxm_hash_table.at(key_for_this_iteration))
         {
             continue;
         }
-        std::vector<Mesh *> *vector_to_pull_mesh_from = starting_bfxm_hash_table[key_for_this_iteration];
+        std::vector<Mesh *> *vector_to_pull_mesh_from = bfxm_hash_table[key_for_this_iteration];
         if (!vector_to_pull_mesh_from)
         {
             continue;
@@ -163,11 +179,41 @@ int main(int argc, char* argv[]) {
         }
         uint32_t mesh_index = random_value_generator() % vector_size;
         Mesh *mesh_for_this_iteration = vector_to_pull_mesh_from->at(mesh_index);
-        bool test_successful = testBenjamenMeyersCode(starting_bfxm_hash_table, key_for_this_iteration, mesh_for_this_iteration);
+        bool test_successful = BenjamenMeyersApproach(bfxm_hash_table, key_for_this_iteration, mesh_for_this_iteration);
         if (!test_successful) {
             std::cerr << "Unsuccessful test of Benjamen Meyer's code" << std::endl;
-            return 1;
+            return false;
         }
+    }
+    return true;
+}
+
+int main(int argc, char* argv[]) {
+    long long input{time(NULL)};
+    // long long input{1713611173};
+    if (argc > 1)
+    {
+        char* s = argv[argc - 1];
+        if (is_integer(s))
+        {
+            input = std::stoll(s);
+        }
+    }
+    constexpr uint32_t output_size{1};
+
+    bool (*whichApproachToTest)(std::unordered_map<std::string, std::vector<Mesh*>*>& bfxm_hash_table,
+                                const std::string& hash_name, const Mesh* thus) = BenjamenMeyersApproach;
+    if (!test_harness(input, output_size, whichApproachToTest))
+    {
+        std::cerr << "Test of Benjamen Meyer's approach failed!" << std::endl;
+        return 1;
+    }
+
+    whichApproachToTest = pr_754_approach;
+    if (!test_harness(input, output_size, whichApproachToTest))
+    {
+        std::cerr << "Test of the PR 754 approach failed!" << std::endl;
+        return 1;
     }
 
     std::cout << "All tests successful!" << std::endl;
