@@ -22,9 +22,15 @@ bool pr_754_approach(std::unordered_map<std::string, std::vector<Mesh *> *> &bfx
     if (hashers) {
         try
         {
-            auto first_to_remove = std::stable_partition(hashers->begin(), hashers->end(), [thus](const Mesh * pi) { return pi != thus; });
-            // TODO: Add deletion of what the pointers actually point to!
-            hashers->erase(first_to_remove, hashers->end());
+            if (!hashers->empty()) {
+                auto first_to_remove = std::stable_partition(hashers->begin(), hashers->end(),
+                                                             [thus](const Mesh *pi) { return pi != thus; });
+                for (auto to_remove = first_to_remove; to_remove != hashers->end(); ++to_remove) {
+                    delete *to_remove;
+                    *to_remove = nullptr;
+                }
+                hashers->erase(first_to_remove, hashers->end());
+            }
             if (hashers->empty())
             {
                 bfxm_hash_table.erase(hash_name);
@@ -45,6 +51,14 @@ bool BenjamenMeyersApproach(std::unordered_map<std::string, std::vector<Mesh *> 
     std::vector<Mesh *> *hashers = bfxm_hash_table.at(hash_name);
     std::vector<Mesh *>::iterator finder;
     if (hashers) {
+        // This if block added by SGT 2024-04-20
+        if (hashers->empty()) {
+            bfxm_hash_table.erase(hash_name);
+            delete hashers;
+            hashers = nullptr;
+            std::cout << "hashers was deleted" << std::endl;
+            return true;
+        }
         try {
             // the following loop has several tricks to it:
             // 1. `std::vector::erase()` can take an iterator and remove it from the vector; but invalidates
@@ -60,7 +74,7 @@ bool BenjamenMeyersApproach(std::unordered_map<std::string, std::vector<Mesh *> 
                 if (*hashItem == thus) {
                     bool resetIter = false;
                     auto cachedHashItem = hashers->begin();
-                    if (hashItem != hashers->begin()) {
+                    if (hashItem != hashers->begin() && hashItem != hashers->end()) {
                         cachedHashItem = hashItem - 1;
                     } else {
                         resetIter = true;
@@ -168,7 +182,7 @@ bool test_harness(long long input, const uint32_t output_size, bool (*which_appr
         uint32_t index_of_key_to_add = uni_key(random_value_generator);
         std::uniform_int_distribution<uint32_t> uni_value(0, how_many_bfxm_value_vectors - 1);
         uint32_t index_of_vector_to_add = uni_value(random_value_generator);
-        bfxm_hash_table->insert_or_assign(keys_to_insert.at(index_of_key_to_add), vector_pointers_to_add_to_bfxm.at(index_of_vector_to_add));
+        bfxm_hash_table->insert(std::make_pair(keys_to_insert.at(index_of_key_to_add), vector_pointers_to_add_to_bfxm.at(index_of_vector_to_add)));
     }
 
     std::uniform_int_distribution<uint32_t> uniA(0, MAX_TEST_ITERATIONS);
@@ -207,6 +221,9 @@ bool test_harness(long long input, const uint32_t output_size, bool (*which_appr
         if (!test_successful) {
             // std::cerr << "Unsuccessful test" << std::endl;
             return false;
+        }
+        if (bfxm_hash_table->find(key_for_this_iteration) == bfxm_hash_table->cend()) {
+            return true;
         }
     }
     return true;
