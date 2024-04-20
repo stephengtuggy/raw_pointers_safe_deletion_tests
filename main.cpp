@@ -79,7 +79,7 @@ bool BenjamenMeyersApproach(std::unordered_map<std::string, std::vector<Mesh *> 
                         delete hashers;
                         hashers = nullptr;
                         std::cout << "hashers was deleted" << std::endl;
-                        break;
+                        return true;
                     }
 
                     if (resetIter) {
