@@ -7,12 +7,12 @@ class Mesh {
     int data{};
 };
 
-const uint32_t MAX_KEY_LENGTH = 80;
-const uint32_t MAX_ENTRIES_PER = 100;
-const uint32_t MAX_TEST_ITERATIONS = 21;
-const uint32_t INITIAL_SEED = 89;
+constexpr uint32_t MAX_KEY_LENGTH = 80;
+constexpr uint32_t MAX_ENTRIES_PER = 100;
+constexpr uint32_t MAX_TEST_ITERATIONS = 34;
+constexpr uint32_t INITIAL_SEED = 89;
 
-bool testBenjamenMeyersCode(std::unordered_map<std::string, std::vector<Mesh *> *> &bfxm_hash_table, std::string& hash_name, Mesh * thus) {
+bool testBenjamenMeyersCode(std::unordered_map<std::string, std::vector<Mesh *> *> &bfxm_hash_table, const std::string& hash_name, const Mesh * thus) {
     std::vector<Mesh *> *hashers = bfxm_hash_table.at(hash_name);
     std::vector<Mesh *>::iterator finder;
     if (hashers) {
@@ -66,7 +66,7 @@ bool testBenjamenMeyersCode(std::unordered_map<std::string, std::vector<Mesh *> 
 }
 
 int main() {
-    constexpr uint32_t input{INITIAL_SEED};
+    time_t input{time(NULL)};
     constexpr uint32_t output_size{1};
 
     std::unordered_map<std::string, std::vector<Mesh *> *> starting_bfxm_hash_table;
@@ -118,7 +118,12 @@ int main() {
         uint32_t key_index = random_value_generator() % how_many_bfxm_hash_table_keys;
         std::string key_for_this_iteration = keys_to_insert.at(key_index);
         std::vector<Mesh *> *vector_to_pull_mesh_from = starting_bfxm_hash_table[key_for_this_iteration];
-        uint32_t mesh_index = random_value_generator() % vector_to_pull_mesh_from->size();
+        size_t vector_size = vector_to_pull_mesh_from->size();
+        if (vector_size == 0)
+        {
+            continue;
+        }
+        uint32_t mesh_index = random_value_generator() % vector_size;
         Mesh *mesh_for_this_iteration = vector_to_pull_mesh_from->at(mesh_index);
         bool test_successful = testBenjamenMeyersCode(starting_bfxm_hash_table, key_for_this_iteration, mesh_for_this_iteration);
         if (!test_successful) {
