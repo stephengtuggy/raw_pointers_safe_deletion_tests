@@ -23,6 +23,7 @@
 #include <regex>
 #include <algorithm>
 #include <functional>
+#include "owner.h"
 
 class Mesh {
     int data{};
@@ -35,7 +36,7 @@ constexpr uint32_t INITIAL_SEED = 1713623895;
 
 std::string char_values_from{"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"};
 
-template<typename T> void remove_all_references_to(const T *thus, std::vector<T *> *&vec, bool& collection_was_deleted) {
+template<typename T> void remove_all_references_to(const T *thus, owner<std::vector<T *> *> &vec, bool& collection_was_deleted) {
     if (vec) {
         if (!vec->empty()) {
             auto first_to_remove = std::stable_partition(vec->begin(), vec->end(),
@@ -50,26 +51,27 @@ template<typename T> void remove_all_references_to(const T *thus, std::vector<T 
     }
 }
 
-bool generalized_approach_A(std::unordered_map<std::string, std::vector<Mesh *> *> &bfxm_hash_table, const std::string& hash_name,
-                            const Mesh *thus, bool &collection_was_deleted) {
-    std::vector<Mesh *> *hashers = bfxm_hash_table.at(hash_name);
+bool generalized_approach_A(std::unordered_map<std::string, owner<std::vector<Mesh *> *>> &bfxm_hash_table, const std::string& hash_name,
+                            owner<Mesh *> &thus, bool &collection_was_deleted) {
+    owner<std::vector<Mesh *> *> &hashers = bfxm_hash_table.at(hash_name);
     remove_all_references_to(thus, hashers, collection_was_deleted);
+    delete thus;
+    thus = nullptr;
+    if (collection_was_deleted) {
+        std::cout << "collection was deleted" << std::endl;
+    }
     return true;
 }
 
-bool pr_754_approach(std::unordered_map<std::string, std::vector<Mesh *> *> &bfxm_hash_table, const std::string& hash_name, const Mesh * thus, bool &collection_was_deleted)
+bool pr_754_approach(std::unordered_map<std::string, owner<std::vector<Mesh *> *>> &bfxm_hash_table, const std::string& hash_name, owner<Mesh *> & thus, bool &collection_was_deleted)
 {
-    std::vector<Mesh *> *hashers = bfxm_hash_table.at(hash_name);
+    owner<std::vector<Mesh *> *> &hashers = bfxm_hash_table.at(hash_name);
     if (hashers) {
         try
         {
             if (!hashers->empty()) {
                 auto first_to_remove = std::stable_partition(hashers->begin(), hashers->end(),
-                            [thus](const Mesh *pi) { return pi != thus; });
-                for (auto to_remove = first_to_remove; to_remove != hashers->end(); ++to_remove) {
-                    delete *to_remove;
-                    *to_remove = nullptr;
-                }
+                            [thus](owner<Mesh *> &pi) { return pi != thus; });
                 hashers->erase(first_to_remove, hashers->end());
             }
             if (hashers->empty())
@@ -79,8 +81,12 @@ bool pr_754_approach(std::unordered_map<std::string, std::vector<Mesh *> *> &bfx
                 hashers = nullptr;
                 std::cout << "hashers was deleted" << std::endl;
                 collection_was_deleted = true;
+                delete thus;
+                thus = nullptr;
                 return true;
             }
+            delete thus;
+            thus = nullptr;
         } catch (std::exception & ex) {
             std::cerr << "Exception occurred in test of PR 754 WIP code: " << ex.what() << std::endl;
             return false;
@@ -89,9 +95,9 @@ bool pr_754_approach(std::unordered_map<std::string, std::vector<Mesh *> *> &bfx
     return true;
 }
 
-bool BenjamenMeyersApproach(std::unordered_map<std::string, std::vector<Mesh *> *> &bfxm_hash_table, const std::string& hash_name, const Mesh * thus, bool &collection_was_deleted) {
-    std::vector<Mesh *> *hashers = bfxm_hash_table.at(hash_name);
-    std::vector<Mesh *>::iterator finder;
+bool BenjamenMeyersApproach(std::unordered_map<std::string, owner<std::vector<Mesh *> *>> &bfxm_hash_table, const std::string& hash_name, owner<Mesh *> & thus, bool &collection_was_deleted) {
+    owner<std::vector<Mesh *> *> &hashers = bfxm_hash_table.at(hash_name);
+//    std::vector<Mesh *>::iterator finder;
     if (hashers) {
         // This if block added by SGT 2024-04-20
         if (hashers->empty()) {
@@ -100,6 +106,8 @@ bool BenjamenMeyersApproach(std::unordered_map<std::string, std::vector<Mesh *> 
             hashers = nullptr;
             std::cout << "hashers was deleted" << std::endl;
             collection_was_deleted = true;
+            delete thus;
+            thus = nullptr;
             return true;
         }
         try {
@@ -123,20 +131,14 @@ bool BenjamenMeyersApproach(std::unordered_map<std::string, std::vector<Mesh *> 
                         resetIter = true;
                         cachedHashItem = hashItem + 1;
                     }
-                    // Note: Is the following block of code specific to these tests? Or should it be copied
-                    // to Vega Strike's corresponding section of code?
-                    {
-                        auto tmp = *hashItem;
-                        hashers->erase(hashItem);
-                        delete tmp;
-                        tmp = nullptr;
-                    }
                     if (hashers->empty()) {
                         bfxm_hash_table.erase(hash_name);
                         delete hashers;
                         hashers = nullptr;
                         std::cout << "hashers was deleted" << std::endl;
                         collection_was_deleted = true;
+                        delete thus;
+                        thus = nullptr;
                         return true;
                     }
 
@@ -149,6 +151,9 @@ bool BenjamenMeyersApproach(std::unordered_map<std::string, std::vector<Mesh *> 
                     }
                 }
             }
+
+            delete thus;
+            thus = nullptr;
         } catch (std::exception & ex) {
             std::cerr << "Exception occurred in test of Benjamen Meyer's code: " << ex.what() << std::endl;
             return false;
@@ -167,7 +172,7 @@ bool is_integer(const std::string & s){
 
 bool test_harness(long long input, const uint32_t output_size, bool (*which_approach_to_test)(
                       std::unordered_map<std::string, std::vector<Mesh*>*>& bfxm_hash_table,
-                      const std::string& hash_name, const Mesh* thus, bool &container_was_deleted))
+                      const std::string& hash_name, owner<Mesh *> & thus, bool &container_was_deleted))
 {
     auto *bfxm_hash_table = new std::unordered_map<std::string, std::vector<Mesh *> *>();
 
@@ -177,6 +182,8 @@ bool test_harness(long long input, const uint32_t output_size, bool (*which_appr
     for (const std::uint32_t n : seeds) {
         std::cout << "Seed: " << n << '\n';
     }
+    // TEMP
+    seeds[0] = 1299506555;
 
     std::mt19937 random_value_generator(seeds[0]);
     std::uniform_int_distribution<uint32_t> uni_max_entries(0, MAX_ENTRIES_PER);
@@ -278,12 +285,12 @@ int main(int argc, char* argv[]) {
     constexpr uint32_t output_size{1};
 
     bool (*whichApproachToTest)(std::unordered_map<std::string, std::vector<Mesh*>*>& bfxm_hash_table,
-                                const std::string& hash_name, const Mesh* thus, bool &collection_was_deleted) = BenjamenMeyersApproach;
-    if (!test_harness(input, output_size, whichApproachToTest))
-    {
-        std::cerr << "Test of Benjamen Meyer's approach failed!" << std::endl;
-        return 1;
-    }
+                                const std::string& hash_name, owner<Mesh *> & thus, bool &collection_was_deleted) = BenjamenMeyersApproach;
+//    if (!test_harness(input, output_size, whichApproachToTest))
+//    {
+//        std::cerr << "Test of Benjamen Meyer's approach failed!" << std::endl;
+//        return 1;
+//    }
 
     whichApproachToTest = pr_754_approach;
     if (!test_harness(input, output_size, whichApproachToTest))
